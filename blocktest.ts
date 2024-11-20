@@ -1,7 +1,7 @@
 import { AiozCoinService } from "./src";
 import {
     NodesOptions,
-    BalanceByAddressResult
+    BalanceByAddressResult, GetBlockResult, TxByHashResult
 } from "./src/common";
 
 // for run use  " yarn ts-node blocktest.ts "
@@ -13,7 +13,7 @@ void (async function (): Promise<void> {
     const config: NodesOptions =
         {
             node: {
-                url: 'https://fullnode-testnet.bouncebitapi.com/',
+                url: 'https://eth-dataseed.aioz.network',
                 confirmationLimit: 10,
             },
         };
@@ -32,9 +32,23 @@ void (async function (): Promise<void> {
         console.log('Balance:', smbBalance);
     }
 
+    //Block
+    const block = async (): Promise<void> => {
+        const chainBlock: GetBlockResult = await service.nodes[0].getBlock(15497764);
+        console.log('Block:', chainBlock);
+    };
+
+    // TxHash
+    const txHash = async (): Promise<void> => {
+        const smbHash: TxByHashResult = await service.nodes[0].txByHash('AIOZ', '0xbe3befd10efb34bf07660a8379902f317e58f5315a6f7e9f5e90ce4ccea633e6');
+        console.log('TxHash:', smbHash);
+    }
+
     try {
         await height();
         await balance();
+        await block();
+        await txHash();
     } catch (e) {
         console.error(e);
     }

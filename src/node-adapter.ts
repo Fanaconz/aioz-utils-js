@@ -1,13 +1,13 @@
 import {
   AdapterType,
   BalanceByAddressResult,
-  BaseNodeAdapter,
+  BaseNodeAdapter, FromParams,
   GetBlockResult,
-  GetHeightResult, Transaction,
-  TxByHashResult,
+  GetHeightResult, ToParams, Transaction,
+  TxByHashResult, TxStatus,
 } from './common';
 import { AiozTransactionBroadcastParams, AiozTransactionBroadcastResults } from './types';
-import axios, {AxiosResponse} from 'axios';
+import axios from 'axios';
 import Big from 'big.js';
 // import {
 //   data,
@@ -55,12 +55,25 @@ export class AiozNodeAdapter extends BaseNodeAdapter {
     const url: string = 'https://eth-dataseed.aioz.network';
     const method:'POST' = 'POST';
     const data = {
-      id: 0,
+      id: 1,
       jsonrpc: '2.0',
-      method: 'eth_getBlockByHash',
-      params: [],
+      method: 'eth_getTransactionByHash',
+      params: [hash],
     };
-    return null;
+    try {
+      const response: any = await this.request<any, typeof data>(method, url, data);
+      function calculateValue(valueHex: string): string {
+        return new Big(parseInt(valueHex, 16).toString()).div(new Big(10).pow(18)).toString();
+      }
+      const from: FromParams[] = [{address: response.from, extraId: null,  value: calculateValue(response.value)}];
+      const to: ToParams[] = [{address: response.to, extraId: null,  value: calculateValue(response.value)}];
+      const status: TxStatus = TxStatus.finished;
+      const height: number = parseInt(response.transactionIndex, 16);
+      return {hash, ticker, from, to, status, height};
+    } catch (error) {
+      console.error('Error block:', error);
+      throw error;
+    }
   }
 
   /**
@@ -91,16 +104,42 @@ export class AiozNodeAdapter extends BaseNodeAdapter {
   async getBlock(
     height: number,
   ): Promise<GetBlockResult> {
-    const url: string = `https://rpc-ds.testnet.aioz.network/block?height=${height}`;
+    const url: string = `https://eth-dataseed.aioz.network`;
     const method:'POST' = 'POST';
+    const data1 = {
+      id: 1,
+      jsonrpc: '2.0',
+      method: 'eth_getBlockByNumber',
+      params: [height, true],
+    };
     try {
-      // const response: data = await this.request<data, null>(method, url);
-      // const timestamp: Date = response.result.block.header.time;
-      // const transactions: Transaction[] = response.result;
-      // const data: Record<string, unknown> = response;
-      //
-      // return {height, timestamp, transactions, data};
-      return;
+      const response: any = await this.request<any, typeof data1>(method, url, data1);
+      console.log(response);
+      const timestamp: Date = new Date(parseInt(response.timestamp.toString(), 16) * 1000);
+      const transactions: Transaction[] = response.transactions.map((tx) => ({
+        hash: tx.hash,
+        ticker: 'AIOZ',
+        from: [
+          {
+            address: tx.from,
+            extraId: null,
+            value: new Big(parseInt(tx.value, 16).toString()).div(new Big(10).pow(18)).toString(),
+          },
+        ],
+        to: [
+          {
+            address: tx.to,
+            extraId: null,
+            value: new Big(parseInt(tx.value, 16).toString()).div(new Big(10).pow(18)).toString(),
+          },
+        ],
+        status: 'finished',
+        height: parseInt(tx.transactionIndex, 16).toString(),
+        gas: parseInt(tx.gas, 16).toString(),
+        gasPrice: parseInt(tx.gasPrice, 16).toString()
+      }));
+      const data: Record<string, unknown> = response;
+      return{height, timestamp, transactions, data};
     } catch (error) {
       console.error('Error block:', error);
       throw error;
