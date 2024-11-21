@@ -9,9 +9,7 @@ import {
 import { AiozTransactionBroadcastParams, AiozTransactionBroadcastResults } from './types';
 import axios from 'axios';
 import Big from 'big.js';
-// import {
-//   data,
-// } from './types/responseTypes';
+
 
 /**
  * Класс, который инициализируется в XxxCoinService для выполнения сетевых запросов.
